@@ -1,15 +1,44 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+/*
+ * App.js
+ *
+ * Root application file for the chat-demo project
+ *
+ * (c) 2025 Dmitri Korotkov
+ */
 
-export default function App() {
+// --- React and other Third-party libraries ---
+import React from 'react';
+//import { StatusBar } from 'expo-status-bar';
+import { StyleSheet } from 'react-native';
+// Import react Navigation
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
+// --- Local application imports ---
+import Start from './components/Start';
+import Chat from './components/Chat';
+
+// Create stack navigator
+const Stack = createNativeStackNavigator();
+
+// Root app component
+const App = () => {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <NavigationContainer>
+        {/* Stack navigator: handles screen stack and basic navigation flow.
+            - `initialRouteName` selects which screen is shown first on launch.
+            - Screens are declared below; additional options (header, gestures) can be provided per-screen as needed. */}
+        <Stack.Navigator initialRouteName='Start'>
+            {/* Entry screen where user picks name and background */}
+            <Stack.Screen name="Start" component={Start} />
+            {/* Chat screen; expects params (name, color) from Start */}
+            <Stack.Screen name="Chat" component={Chat} />
+        </Stack.Navigator>
+ </NavigationContainer>
   );
 }
 
+// Component styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -18,3 +47,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+
+export default App;
