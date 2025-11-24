@@ -7,28 +7,61 @@
  */
 
 // --- React and other Third-party libraries ---
-import React, { useEffect } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
+import { GiftedChat } from 'react-native-gifted-chat';
 
-// Chat: basic placeholder component
-//
 // Expected route params:
 //  - name: string used to set the screen title
 //  - color: hex string used as the background color for this screen
 // The component ensures sensible defaults if params are missing.
 const Chat = ({ route, navigation }) => {
     const { name, color } = route?.params || { name: 'Chat', color: '#FFFFFF' };
+    const [messages, setMessages] = useState([]);   // State to hold chat messages
 
     // Set the screen title to the passed name when the component mounts
     useEffect(() => {
         navigation.setOptions({ title: name });
     }, [name]);
 
+    // Initialize chat
+    useEffect(() => {
+        setMessages([
+            {
+                _id: 1,
+                text: "Hello developer",
+                createdAt: new Date(),
+                user: {
+                    _id: 2,
+                    name: "React Native",
+                    avatar: "https://placeimg.com/140/140/any",
+                },
+            },
+            {
+                _id: 2,
+                text: 'This is a system message',
+                createdAt: new Date(),
+                system: true,
+            },
+        ]);
+    }, []);
+      
+    // Handle sending new messages. useCallback keeps the handler stable between renders and avoids 
+    // creating a new function each render which can trigger unnecessary updates in child components.
+    const onSend = useCallback((newMessages = []) => {
+        setMessages(previousMessages => GiftedChat.append(previousMessages, newMessages));
+    }, []);
+
+    // Render the chat interface
     return (
         <View style={[styles.containerOuter, { backgroundColor: color }]}>
-            <ScrollView contentContainerStyle={styles.container}>
-                <Text style={styles.text}>Screen 2 - placeholder</Text>
-            </ScrollView>
+            <GiftedChat
+                messages={messages}
+                onSend={onSend}
+                user={user}
+            />
+            {/* Adjust for keyboard on Android */}
+            { Platform.OS === 'android' ? <KeyboardAvoidingView behavior="height" /> : null }
         </View>
     );
 };
