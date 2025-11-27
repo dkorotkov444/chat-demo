@@ -26,7 +26,7 @@ const Start = ({ navigation }) => {
     return (
         <KeyboardAvoidingView
             style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={'padding'}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
         >
             <ImageBackground 
@@ -99,7 +99,8 @@ const styles = StyleSheet.create({
     image: {
         flex: 1,
         width: '100%',
-        justifyContent: "flex-start"},
+        justifyContent: 'space-between',
+    },
     header: {
         height: '20%',
         width: '100%',
@@ -126,20 +127,18 @@ const styles = StyleSheet.create({
         color: '#000',
     },
     panel: {
-        position: 'absolute',
-        bottom: '6%',
         alignSelf: 'center',
         width: '88%',
-        height: '44%',
         backgroundColor: 'rgba(255,255,255,0.9)',
         borderRadius: 12,
         padding: 16,
+        marginBottom: 24,
     },
     panelSection: {
-        flex: 1,
         width: '100%',
         alignItems: 'center',
         justifyContent: 'center',
+        paddingVertical: 8,
     },
     label: {
         fontSize: 16,
