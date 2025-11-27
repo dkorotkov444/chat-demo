@@ -29,10 +29,10 @@ const App = () => {
             - `initialRouteName` selects which screen is shown first on launch.
             - Screens are declared below; additional options (header, gestures) can be provided per-screen as needed. */}
         <Stack.Navigator initialRouteName='Start'>
-            {/* Entry screen where user picks name and background */}
-            <Stack.Screen name="Start" component={Start} />
-            {/* Chat screen; expects params (name, color) from Start */}
-            <Stack.Screen name="Chat" component={Chat} />
+          {/* Entry screen where user picks name and background */}
+          <Stack.Screen name='Start' component={Start} />
+          {/* Chat screen; expects params (name, color) from Start */}
+          <Stack.Screen name='Chat' component={Chat} />
         </Stack.Navigator>
  </NavigationContainer>
   );

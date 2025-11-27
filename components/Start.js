@@ -8,7 +8,7 @@
 
 // --- React and other Third-party libraries ---
 import React , {useState} from 'react';
-import { ImageBackground, StyleSheet, Text, TextInput, View, TouchableOpacity } from 'react-native';
+import { ImageBackground, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View, TouchableOpacity } from 'react-native';
 
 // --- Local application imports ---
 // Local assets and configuration
@@ -24,10 +24,14 @@ const Start = ({ navigation }) => {
     const [color, setColor] = useState('black');  // State to hold the selected color
 
     return (
-		<View style={styles.container}>
-			<ImageBackground 
+        <KeyboardAvoidingView
+            style={styles.container}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+        >
+            <ImageBackground 
                 source={backgroundImage} 
-                resizeMode="cover" 
+                resizeMode='cover' 
                 style={styles.image}
             >
                 <View style={styles.header}>
@@ -42,10 +46,13 @@ const Start = ({ navigation }) => {
                     <View style={styles.panelSection}>
                         <TextInput
                             style={styles.textInput}
-                            placeholder="👤  Your name"
+                            placeholder='👤  Your name'
                             placeholderTextColor={'rgba(117,112,131,0.5)'}
                             value={name}
                             onChangeText={setName}
+                            accessibilityLabel='Name input'
+                            accessibilityHint='Enter your display name for the chat'
+                            accessibilityRole='text'
                         />
                     </View>
 
@@ -59,6 +66,8 @@ const Start = ({ navigation }) => {
                                     onPress={() => setColor(code)}
                                     accessibilityRole="radio"
                                     accessibilityState={{ selected: color === code }}
+                                    accessibilityLabel={`Background color ${code}`}
+                                    accessibilityHint={`Select ${code} as the chat background color`}
                                 >
                                     <View style={[styles.colorCircle, { backgroundColor: code, borderColor: color === code ? '#000' : 'transparent' }]} />
                                 </TouchableOpacity>
@@ -70,16 +79,21 @@ const Start = ({ navigation }) => {
                         <TouchableOpacity
                             style={styles.startButton}
                             onPress={() => navigation.navigate('Chat', { name: name, color: color })}
+                            accessibilityRole='button'
+                            accessibilityLabel='Start chatting'
+                            accessibilityHint='Open chat screen with selected name and background color'
                         >
                             <Text style={styles.startButtonText}>Start chatting</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
             </ImageBackground>
-		</View>
+        </KeyboardAvoidingView>
 	);
 
 };
+
+// Styles for the Start component
 const styles = StyleSheet.create({
 	container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     image: {
