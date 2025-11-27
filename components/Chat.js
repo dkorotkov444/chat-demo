@@ -73,7 +73,7 @@ const Chat = ({ route, navigation }) => {
         const dark = isVeryDarkBg(color);
         const incomingWrapper = props.wrapperStyle || {};
         // Force outgoing (right) bubble background (avoid inherited blue):
-        const rightBg = dark ? '#e5eea' : '#FFFFFF';
+        const rightBg = dark ? '#e5eeaa' : '#FFFFFF';
         // Make incoming (left) bubble slightly lighter when the screen background is dark
         const leftBg = dark ? '#3a3a3a' : '#FFF';
         const rightText = dark ? '#000' : (props.textStyle?.right?.color || '#000');
