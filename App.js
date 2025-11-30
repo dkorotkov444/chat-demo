@@ -8,10 +8,12 @@
 
 // --- React and other Third-party libraries ---
 import React from 'react';
-import { StyleSheet } from 'react-native';
 // Import react Navigation
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+// Firebase SDK for initializing the app and obtaining Firestore
+import { initializeApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
 
 // --- Local application imports ---
 import Start from './components/Start';
@@ -20,38 +22,38 @@ import Chat from './components/Chat';
 
 // Create stack navigator
 const Stack = createNativeStackNavigator();
+// Firebase configuration and initialization are moved to module scope so the
+// app is initialized once when the module is loaded. In production consider
+// keeping keys in environment variables or secure config rather than in source.
+const firebaseConfig = {
+    apiKey: 'AIzaSyCJcZlfWWPYLrFh5YtmdR6qFhy7P_NLT1E',
+    authDomain: 'chat-demo-852d3.firebaseapp.com',
+    projectId: 'chat-demo-852d3',
+    storageBucket: 'chat-demo-852d3.firebasestorage.app',
+    messagingSenderId: '370273885356',
+    appId: '1:370273885356:web:704388dc90af1c34539309'
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 // Root app component
 const App = () => {
+    // Return the navigation container with stack navigator. `db` is provided
+    // to the `Chat` screen via a render-prop so child screens can use it.
     return (
         <NavigationContainer>
-            {/* Stack navigator: handles screen stack and basic navigation flow.
-                - `initialRouteName` selects which screen is shown first on launch.
-                - Screens are declared below; additional options (header, gestures) can be provided per-screen as needed. */}
             <Stack.Navigator initialRouteName='Start'>
-                {/* Entry screen where user picks name and background */}
                 <Stack.Screen name='Start' component={Start} />
-                {/* Chat screen; expects params (name, color) from Start.
-                    Set the header title from route params to avoid calling
-                    `navigation.setOptions` inside the screen component. */}
                 <Stack.Screen
-                name='Chat'
-                component={Chat}
-                options={({ route }) => ({ title: route?.params?.name ?? 'Chat' })}
-                />
+                    name='Chat'
+                    options={({ route }) => ({ title: route?.params?.name ?? 'Chat' })}
+                >
+                    {props => <Chat db={db} {...props} />}
+                </Stack.Screen>
             </Stack.Navigator>
         </NavigationContainer>
     );
-}
-
-// Component styles
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#fff',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-});
+};
 
 export default App;

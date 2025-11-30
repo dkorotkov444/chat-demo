@@ -7,8 +7,10 @@
  */
 
 // --- React and other Third-party libraries ---
-import React , {useState} from 'react';
+import React, { useState } from 'react';
 import { ImageBackground, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View, TouchableOpacity } from 'react-native';
+// Firebase authentication for anonymous sign-in
+import { getAuth, signInAnonymously } from "firebase/auth";
 
 // --- Local application imports ---
 // Local assets and configuration
@@ -21,7 +23,21 @@ const COLOR_OPTIONS = ['#090C08', '#474056', '#8A95A5', '#B9C6AE'];
 // Start: basic placeholder component
 const Start = ({ navigation }) => {
     const [name, setName] = useState('');   // State to hold the user's name input
-    const [color, setColor] = useState('black');  // State to hold the selected color
+    const [color, setColor] = useState('#B9C6AE');  // State to hold the selected color
+    // Create the auth instance when signing in to ensure Firebase has been
+    // initialized by the App module and to avoid creating it unnecessarily early.
+    const signInUser = () => {
+        const auth = getAuth();
+        const displayName = name.trim() || 'Anonymous';
+
+        signInAnonymously(auth)
+        .then(result => {
+            navigation.navigate('Chat', { userID: result.user.uid, name: displayName, color: color });
+        })
+        .catch((error) => {
+            console.error('Anonymous sign-in failed:', error);
+        });
+    };
 
     return (
         <KeyboardAvoidingView
@@ -78,7 +94,7 @@ const Start = ({ navigation }) => {
                     <View style={styles.panelSection}>
                         <TouchableOpacity
                             style={styles.startButton}
-                            onPress={() => navigation.navigate('Chat', { name: name, color: color })}
+                            onPress={signInUser}
                             accessibilityRole='button'
                             accessibilityLabel='Start chatting'
                             accessibilityHint='Open chat screen with selected name and background color'
@@ -108,7 +124,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingBottom: 8,
     },
-    text: { fontSize: 16 },
     title: {
         fontSize: 45,
         fontWeight: '600',
