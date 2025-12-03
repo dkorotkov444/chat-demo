@@ -9,7 +9,7 @@
 // --- React and other Third-party libraries ---
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
-import { GiftedChat, Bubble, SystemMessage } from 'react-native-gifted-chat';
+import { GiftedChat, Bubble, SystemMessage, InputToolbar } from 'react-native-gifted-chat';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 // Firestore helpers for reading and writing collections
@@ -39,9 +39,12 @@ const INITIAL_MESSAGES = [
 //  - name: string used to set the screen title
 //  - color: hex string used as the background color for this screen
 const Chat = ({ db, route, isConnected }) => {
-    const { userID, name, color } = route?.params || { name: 'Chat', color: '#FFFFFF' };
+    // Safely read route params; treat falsy values as missing and replace with fallbacks.
+    const { userID, name, color } = route?.params ?? {};
+    const bgColor = color || '#FFFFFF';
     // Memoize user so a stable reference is passed to GiftedChat and avoid unnecessary re-renders.
-    const user = useMemo(() => ({ _id: userID, name: name || 'Me' }), [userID, name]);
+    // Use logical-OR so empty string or other falsy values are replaced by the fallback.
+    const user = useMemo(() => ({ _id: userID || 'unknown', name: name || 'Me' }), [userID, name]);
 
     // Move text input props to a top-level memo to avoid recreating the object each render.
     const textInputProps = useMemo(() => ({
@@ -117,7 +120,7 @@ const Chat = ({ db, route, isConnected }) => {
         } else {
             loadCachedMessages();
         }
-    }, [db, isConnected, cacheMessagesDebounced, loadCachedMessages]);
+    }, [db, isConnected, cacheMessages, loadCachedMessages]);
 
     const insets = useSafeAreaInsets();
 
@@ -146,7 +149,7 @@ const Chat = ({ db, route, isConnected }) => {
 
     // Render custom bubble styles while preserving any incoming styles from GiftedChat
     const renderBubble = (props) => {
-        const dark = isVeryDarkBg(color);
+        const dark = isVeryDarkBg(bgColor);
         const incomingWrapper = props.wrapperStyle || {};
         // Force outgoing (right) bubble background (avoid inherited blue):
         const rightBg = dark ? '#e5eeaa' : '#FFFFFF';
@@ -177,7 +180,7 @@ const Chat = ({ db, route, isConnected }) => {
 
     // Render system messages with higher contrast and centered alignment
     const renderSystemMessage = (props) => {
-        const dark = isVeryDarkBg(color);
+        const dark = isVeryDarkBg(bgColor);
         return (
             <SystemMessage
                 {...props}
@@ -186,11 +189,17 @@ const Chat = ({ db, route, isConnected }) => {
             />
         );
     };
+
+    // Show the input toolbar only when online to prevent composing while offline
+    const renderInputToolbar = useCallback((props) => {
+        if (!!isConnected) return <InputToolbar {...props} />;
+        return null;
+    }, [isConnected]);
    
     // Render the chat interface
     return (
         <SafeAreaView
-            style={[styles.containerOuter, { backgroundColor: color }]}
+            style={[styles.containerOuter, { backgroundColor: bgColor }]}
             accessibilityLabel='Chat screen'
             accessibilityHint='Displays messages and composer to send messages'
         >
@@ -203,6 +212,7 @@ const Chat = ({ db, route, isConnected }) => {
                     messages={messages}
                     renderBubble={renderBubble}
                     renderSystemMessage={renderSystemMessage}
+                    renderInputToolbar={renderInputToolbar}
                     onSend={onSend}
                     user={user}
                     textInputProps={textInputProps}

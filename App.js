@@ -7,7 +7,7 @@
  */
 
 // --- React and other Third-party libraries ---
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 // Import react Navigation
 import { NavigationContainer } from '@react-navigation/native';
@@ -43,9 +43,22 @@ const db = getFirestore(app);
 const App = () => {
     const [netBanner, setNetBanner] = useState(null); // string or null
     const connectionStatus = useNetInfo();  // Hook to monitor network connection status
+    const prevConnected = useRef(undefined);
     // Alert user and disconnect Firestore database when connection is lost, reconnect when restored
     useEffect(() => {
-        if (connectionStatus.isConnected === false) {
+        const isConnected = connectionStatus.isConnected;
+        // On initial mount, set Firestore network state but suppress the banner
+        if (prevConnected.current === undefined) {
+            prevConnected.current = isConnected;
+            if (isConnected === false) {
+                disableNetwork(db).catch(err => console.log('disableNetwork error', err));
+            } else {
+                enableNetwork(db).catch(err => console.log('enableNetwork error', err));
+            }
+            return;
+        }
+
+        if (isConnected === false) {
             setNetBanner('Connection lost');
             disableNetwork(db).catch(err => console.log('disableNetwork error', err));
         } else {
@@ -68,7 +81,7 @@ const App = () => {
                     <Stack.Screen name='Start' component={Start} />
                     <Stack.Screen
                         name='Chat'
-                        options={({ route }) => ({ title: route?.params?.name ?? 'Chat' })}
+                        options={({ route }) => ({ title: route?.params?.name || 'Me' })}
                     >
                         {props => <Chat isConnected={connectionStatus.isConnected} db={db} {...props} />}
                     </Stack.Screen>
