@@ -11,13 +11,11 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { GiftedChat, Bubble, SystemMessage } from 'react-native-gifted-chat';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 // Firestore helpers for reading and writing collections
-import { addDoc, collection, orderBy, onSnapshot, query } from "firebase/firestore";
+import { addDoc, collection, orderBy, onSnapshot, query, serverTimestamp } from 'firebase/firestore';
 
-// Local initial messages to show on first load. These are kept in-memory only
-// and are not written to Firestore. Use current timestamps so they appear
-// natural while the database is empty; they will be removed when remote
-// messages arrive.
+// Local initial messages shown before remote messages arrive, then they disappear automatically.
 const INITIAL_MESSAGES = [
     {
         _id: 'init-1',
@@ -36,13 +34,11 @@ const INITIAL_MESSAGES = [
         },
     },
 ];
-// Initial messages will be removed automatically once remote messages arrive.
 
 // Expected route params:
 //  - name: string used to set the screen title
 //  - color: hex string used as the background color for this screen
-// The component ensures sensible defaults if params are missing.
-const Chat = ({ db, route, navigation }) => {
+const Chat = ({ db, route, isConnected }) => {
     const { userID, name, color } = route?.params || { name: 'Chat', color: '#FFFFFF' };
     // Memoize user so a stable reference is passed to GiftedChat and avoid unnecessary re-renders.
     const user = useMemo(() => ({ _id: userID, name: name || 'Me' }), [userID, name]);
@@ -57,55 +53,84 @@ const Chat = ({ db, route, navigation }) => {
     const [messages, setMessages] = useState([]);   // State to hold chat messages
 
     useEffect(() => {
-        // show initial in-memory messages once on mount
+        // Show initial in-memory messages once on mount.
         setMessages(INITIAL_MESSAGES);
-      }, []);
+    }, []);
 
-    useEffect(() => {
-        const q = query(collection(db, 'messages'), orderBy('createdAt', 'desc'));
-        const unsubMessages = onSnapshot(q, (docs) => {
-            // Snapshot received; update messages from Firestore.
-            const newMessages = [];
-            docs.forEach(doc => {
-                const data = doc.data();
-                    // doc data processed for display
-                // Firestore stores timestamps as a special object with `toDate()`.
-                // GiftedChat expects a plain JS `Date` instance on `createdAt`.
-                const createdAt = data?.createdAt && typeof data.createdAt.toDate === 'function'
-                    ? data.createdAt.toDate()
-                    : (data?.createdAt instanceof Date ? data.createdAt : new Date());
-
-                newMessages.push({ _id: doc.id, ...data, createdAt });
+    // Cache messages locally using AsyncStorage (serialize dates to ISO strings)
+    // Keep only the most recent 200 messages to avoid unbounded growth.
+    const cacheMessages = useCallback(async (messagesToCache) => {
+        try {
+            const capped = (messagesToCache || []).slice(0, 200);
+            const toStore = capped.map(m => {
+                const createdAt = m?.createdAt instanceof Date ? m.createdAt.toISOString() : (m?.createdAt || new Date().toISOString());
+                return { ...m, createdAt };
             });
-                // If we have at least one remote message, drop the initial
-                // in-memory messages so only remote messages are shown.
+            await AsyncStorage.setItem('chat_messages', JSON.stringify(toStore));
+        } catch (error) {
+            console.log('cacheMessages error:', error?.message || error);
+        }
+    }, []);
+
+    // Load cached messages from AsyncStorage (restore ISO -> Date)
+    const loadCachedMessages = useCallback(async () => {
+        try {
+            const raw = await AsyncStorage.getItem('chat_messages');
+            if (!raw) return;
+            const parsed = JSON.parse(raw);
+            const restored = (parsed || []).map(m => {
+                const createdAt = m?.createdAt ? new Date(m.createdAt) : new Date();
+                return { ...m, createdAt };
+            });
+            setMessages(restored);
+        } catch (error) {
+            console.log('loadCachedMessages error:', error?.message || error);
+        }
+    }, []);
+
+    // Register Firestore real-time listener only when online. When offline, restore cache.
+    useEffect(() => {
+        if (!db) return;
+
+        if (isConnected === true) {
+            const q = query(collection(db, 'messages'), orderBy('createdAt', 'desc'));
+            const unsub = onSnapshot(q, (snapshot) => {
+                const newMessages = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const createdAt = data?.createdAt && typeof data.createdAt.toDate === 'function'
+                        ? data.createdAt.toDate()
+                        : (data?.createdAt instanceof Date ? data.createdAt : new Date());
+                    newMessages.push({ _id: doc.id, ...data, createdAt });
+                });
                 const source = newMessages.length > 0 ? newMessages : [...INITIAL_MESSAGES, ...newMessages];
                 const merged = source.sort((a, b) => {
                     const ta = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
                     const tb = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
                     return tb - ta;
                 });
+                cacheMessages(merged);
                 setMessages(merged);
-        });
+            }, (err) => { console.log('onSnapshot error:', err); });
 
-        return () => { if (unsubMessages) unsubMessages(); };
-    }, [db]);
-    
+            return () => { unsub(); };
+        } else {
+            loadCachedMessages();
+        }
+    }, [db, isConnected, cacheMessagesDebounced, loadCachedMessages]);
+
     const insets = useSafeAreaInsets();
 
-    // Title is handled by navigator options (see `App.js`). Avoid setting
-    // navigation options inside this component to reduce re-render risk.
+    // Title is handled by navigator options (see `App.js`) to reduce re-render risk.
       
     // Handle sending new messages. useCallback keeps the handler stable between renders and avoids 
     // creating a new function each render which can trigger unnecessary updates in child components.
     const onSend = useCallback(async (newMessages = []) => {
-        // Persist the first message to Firestore and handle errors.
-        // We don't update local state here because the onSnapshot listener
-        // will pick up and reflect new messages in the UI.
+        // Persist message to Firestore.
         try {
             const [message] = newMessages;
             if (!message) return;
-            const docRef = await addDoc(collection(db, 'messages'), message);
+            await addDoc(collection(db, 'messages'), { ...message, createdAt: serverTimestamp() });
         } catch (err) {
             console.error('Failed to send message:', err);
         }

@@ -10,7 +10,7 @@
 import React, { useState } from 'react';
 import { ImageBackground, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View, TouchableOpacity } from 'react-native';
 // Firebase authentication for anonymous sign-in
-import { getAuth, signInAnonymously } from "firebase/auth";
+import { getAuth, signInAnonymously } from 'firebase/auth';
 
 // --- Local application imports ---
 // Local assets and configuration
@@ -80,7 +80,7 @@ const Start = ({ navigation }) => {
                                     key={code}
                                     style={styles.colorItem}
                                     onPress={() => setColor(code)}
-                                    accessibilityRole="radio"
+                                    accessibilityRole='radio'
                                     accessibilityState={{ selected: color === code }}
                                     accessibilityLabel={`Background color ${code}`}
                                     accessibilityHint={`Select ${code} as the chat background color`}

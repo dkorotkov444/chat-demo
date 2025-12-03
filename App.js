@@ -7,13 +7,15 @@
  */
 
 // --- React and other Third-party libraries ---
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 // Import react Navigation
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useNetInfo }from '@react-native-community/netinfo';    // Provides network status monitoring
 // Firebase SDK for initializing the app and obtaining Firestore
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, disableNetwork, enableNetwork } from 'firebase/firestore';
 
 // --- Local application imports ---
 import Start from './components/Start';
@@ -39,21 +41,47 @@ const db = getFirestore(app);
 
 // Root app component
 const App = () => {
-    // Return the navigation container with stack navigator. `db` is provided
-    // to the `Chat` screen via a render-prop so child screens can use it.
+    const [netBanner, setNetBanner] = useState(null); // string or null
+    const connectionStatus = useNetInfo();  // Hook to monitor network connection status
+    // Alert user and disconnect Firestore database when connection is lost, reconnect when restored
+    useEffect(() => {
+        if (connectionStatus.isConnected === false) {
+            setNetBanner('Connection lost');
+            disableNetwork(db).catch(err => console.log('disableNetwork error', err));
+        } else {
+            setNetBanner('Connection restored');
+            enableNetwork(db).catch(err => console.log('enableNetwork error', err));
+        }
+    }, [connectionStatus.isConnected]);
+
+    // Return the navigation container with stack navigator.
+    // `db` is provided to the `Chat` screen via a render-prop so child screens can use it.
     return (
-        <NavigationContainer>
-            <Stack.Navigator initialRouteName='Start'>
-                <Stack.Screen name='Start' component={Start} />
-                <Stack.Screen
-                    name='Chat'
-                    options={({ route }) => ({ title: route?.params?.name ?? 'Chat' })}
-                >
-                    {props => <Chat db={db} {...props} />}
-                </Stack.Screen>
-            </Stack.Navigator>
-        </NavigationContainer>
+        <View style={styles.appContainer}>
+            {netBanner ? (
+                <View style={styles.banner} pointerEvents='none'>
+                    <Text style={styles.bannerText}>{netBanner}</Text>
+                </View>
+            ) : null}
+            <NavigationContainer>
+                <Stack.Navigator initialRouteName='Start'>
+                    <Stack.Screen name='Start' component={Start} />
+                    <Stack.Screen
+                        name='Chat'
+                        options={({ route }) => ({ title: route?.params?.name ?? 'Chat' })}
+                    >
+                        {props => <Chat isConnected={connectionStatus.isConnected} db={db} {...props} />}
+                    </Stack.Screen>
+                </Stack.Navigator>
+            </NavigationContainer>
+        </View>
     );
 };
+
+const styles = StyleSheet.create({
+    appContainer: { flex: 1 },
+    banner: { backgroundColor: '#222', padding: 8, alignItems: 'center' },
+    bannerText: { color: '#fff', fontWeight: '600' },
+});
 
 export default App;
