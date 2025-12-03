@@ -43,23 +43,27 @@ const db = getFirestore(app);
 const App = () => {
     const [netBanner, setNetBanner] = useState(null); // string or null
     const connectionStatus = useNetInfo();  // Hook to monitor network connection status
-    const prevConnected = useRef(undefined);
+    // Initialize prevConnected from the first available network status.
+    const prevConnected = useRef(!!connectionStatus.isConnected);
     const bannerTimerRef = useRef(null);
-    // Alert user and disconnect Firestore database when connection is lost, reconnect when restored
-    useEffect(() => {
-        const isConnected = connectionStatus.isConnected;
-        // On initial mount, set Firestore network state but suppress the banner
-        if (prevConnected.current === undefined) {
-            prevConnected.current = isConnected;
-            if (isConnected === false) {
-                disableNetwork(db).catch(err => console.log('disableNetwork error', err));
-            } else {
-                enableNetwork(db).catch(err => console.log('enableNetwork error', err));
-            }
-            return;
-        }
 
-        if (isConnected === false) {
+    // On mount, set Firestore network to the initial connection state without showing a banner.
+    useEffect(() => {
+        if (prevConnected.current) {
+            enableNetwork(db).catch(err => console.log('enableNetwork error', err));
+        } else {
+            disableNetwork(db).catch(err => console.log('disableNetwork error', err));
+        }
+        // We intentionally do not set a banner here.
+    }, []);
+
+    // Watch for real transitions and show a brief banner when they occur.
+    useEffect(() => {
+        const isConnected = !!connectionStatus.isConnected;
+        if (prevConnected.current === isConnected) return; // no change
+
+        prevConnected.current = isConnected;
+        if (!isConnected) {
             setNetBanner('Connection lost');
             disableNetwork(db).catch(err => console.log('disableNetwork error', err));
         } else {
@@ -69,7 +73,7 @@ const App = () => {
 
         // Auto-hide the banner after 3 seconds. Reset any existing timer.
         if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
-        bannerTimerRef.current = setTimeout(() => setNetBanner(null), 3000);
+        bannerTimerRef.current = setTimeout(() => setNetBanner(null), 10000);
     }, [connectionStatus.isConnected]);
 
     // Clear banner timer on unmount
