@@ -44,6 +44,7 @@ const App = () => {
     const [netBanner, setNetBanner] = useState(null); // string or null
     const connectionStatus = useNetInfo();  // Hook to monitor network connection status
     const prevConnected = useRef(undefined);
+    const bannerTimerRef = useRef(null);
     // Alert user and disconnect Firestore database when connection is lost, reconnect when restored
     useEffect(() => {
         const isConnected = connectionStatus.isConnected;
@@ -65,7 +66,16 @@ const App = () => {
             setNetBanner('Connection restored');
             enableNetwork(db).catch(err => console.log('enableNetwork error', err));
         }
+
+        // Auto-hide the banner after 3 seconds. Reset any existing timer.
+        if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
+        bannerTimerRef.current = setTimeout(() => setNetBanner(null), 3000);
     }, [connectionStatus.isConnected]);
+
+    // Clear banner timer on unmount
+    useEffect(() => {
+        return () => { if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current); };
+    }, []);
 
     // Return the navigation container with stack navigator.
     // `db` is provided to the `Chat` screen via a render-prop so child screens can use it.
