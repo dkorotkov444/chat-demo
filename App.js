@@ -16,6 +16,14 @@ import { useNetInfo }from '@react-native-community/netinfo';    // Provides netw
 // Firebase SDK for initializing the app and obtaining Firestore
 import { initializeApp } from 'firebase/app';
 import { getFirestore, disableNetwork, enableNetwork } from 'firebase/firestore';
+import {
+    FIREBASE_API_KEY,
+    FIREBASE_AUTH_DOMAIN,
+    FIREBASE_PROJECT_ID,
+    FIREBASE_STORAGE_BUCKET,
+    FIREBASE_MESSAGING_SENDER_ID,
+    FIREBASE_APP_ID,
+} from '@env';
 
 // --- Local application imports ---
 import Start from './components/Start';
@@ -25,15 +33,15 @@ import Chat from './components/Chat';
 // Create stack navigator
 const Stack = createNativeStackNavigator();
 // Firebase configuration and initialization are moved to module scope so the
-// app is initialized once when the module is loaded. In production consider
-// keeping keys in environment variables or secure config rather than in source.
+// app is initialized once when the module is loaded. For security, provide
+// your real keys in a local `.env` (copy `.env.example` to `.env`).
 const firebaseConfig = {
-    apiKey: 'AIzaSyCJcZlfWWPYLrFh5YtmdR6qFhy7P_NLT1E',
-    authDomain: 'chat-demo-852d3.firebaseapp.com',
-    projectId: 'chat-demo-852d3',
-    storageBucket: 'chat-demo-852d3.firebasestorage.app',
-    messagingSenderId: '370273885356',
-    appId: '1:370273885356:web:704388dc90af1c34539309'
+    apiKey: FIREBASE_API_KEY,
+    authDomain: FIREBASE_AUTH_DOMAIN,
+    projectId: FIREBASE_PROJECT_ID,
+    storageBucket: FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: FIREBASE_MESSAGING_SENDER_ID,
+    appId: FIREBASE_APP_ID,
 };
 
 const app = initializeApp(firebaseConfig);
