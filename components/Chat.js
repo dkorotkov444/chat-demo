@@ -12,8 +12,11 @@ import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { GiftedChat, Bubble, SystemMessage, InputToolbar } from 'react-native-gifted-chat';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import MapView from 'react-native-maps';
 // Firestore helpers for reading and writing collections
 import { addDoc, collection, orderBy, onSnapshot, query, serverTimestamp } from 'firebase/firestore';
+// Custom actions component for image and location sending
+import CustomActions from './CustomActions';
 
 // Local initial messages shown before remote messages arrive, then they disappear automatically.
 const INITIAL_MESSAGES = [
@@ -38,7 +41,7 @@ const INITIAL_MESSAGES = [
 // Expected route params:
 //  - name: string used to set the screen title
 //  - color: hex string used as the background color for this screen
-const Chat = ({ db, route, isConnected }) => {
+const Chat = ({ db, storage, route, isConnected }) => {
     // Safely read route params; treat falsy values as missing and replace with fallbacks.
     const { userID, name, color } = route?.params ?? {};
     const bgColor = color || '#FFFFFF';
@@ -196,7 +199,34 @@ const Chat = ({ db, route, isConnected }) => {
         return null;
     }, [isConnected]);
    
-    // Render the chat interface
+    // Render custom actions (e.g., image or location upload) if needed
+    const renderCustomActions = (props) => {
+        return <CustomActions {...props} userID={userID} storage={storage} />;
+    };
+
+    // Render a custom view for messages with location data
+    const renderCustomView = (props) => {
+        const { currentMessage} = props;
+        if (currentMessage.location) {
+            return (
+                <MapView
+                    style={{width: 150,
+                    height: 100,
+                    borderRadius: 13,
+                    margin: 3}}
+                    region={{
+                    latitude: currentMessage.location.latitude,
+                    longitude: currentMessage.location.longitude,
+                    latitudeDelta: 0.0922,
+                    longitudeDelta: 0.0421,
+                    }}
+                />
+            );
+        }
+        return null;
+    };
+
+    // Render chat interface
     return (
         <SafeAreaView
             style={[styles.containerOuter, { backgroundColor: bgColor }]}
@@ -213,6 +243,8 @@ const Chat = ({ db, route, isConnected }) => {
                     renderBubble={renderBubble}
                     renderSystemMessage={renderSystemMessage}
                     renderInputToolbar={renderInputToolbar}
+                    renderActions={renderCustomActions}
+                    renderCustomView={renderCustomView}
                     onSend={onSend}
                     user={user}
                     textInputProps={textInputProps}

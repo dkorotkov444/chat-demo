@@ -12,10 +12,15 @@ import { View, Text, StyleSheet } from 'react-native';
 // Import react Navigation
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useNetInfo }from '@react-native-community/netinfo';    // Provides network status monitoring
+// Provides network status monitoring
+import { useNetInfo }from '@react-native-community/netinfo';
+
 // Firebase SDK for initializing the app and obtaining Firestore
 import { initializeApp } from 'firebase/app';
 import { getFirestore, disableNetwork, enableNetwork } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
+
+// Import environment variables
 import {
     FIREBASE_API_KEY,
     FIREBASE_AUTH_DOMAIN,
@@ -28,7 +33,6 @@ import {
 // --- Local application imports ---
 import Start from './components/Start';
 import Chat from './components/Chat';
-// ErrorBoundary removed; app runs without dev-only boundary
 
 // Create stack navigator
 const Stack = createNativeStackNavigator();
@@ -44,8 +48,9 @@ const firebaseConfig = {
     appId: FIREBASE_APP_ID,
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const app = initializeApp(firebaseConfig);  // Initialize Firebase app
+const db = getFirestore(app);       // Firestore database instance
+const storage = getStorage(app);    // Firebase storage instance
 
 // Root app component
 const App = () => {
@@ -105,7 +110,7 @@ const App = () => {
                         name='Chat'
                         options={({ route }) => ({ title: route?.params?.name || 'Me' })}
                     >
-                        {props => <Chat isConnected={connectionStatus.isConnected} db={db} {...props} />}
+                        {props => <Chat isConnected={connectionStatus.isConnected} db={db} storage={storage} {...props} />}
                     </Stack.Screen>
                 </Stack.Navigator>
             </NavigationContainer>
