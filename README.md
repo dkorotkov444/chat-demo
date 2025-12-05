@@ -26,29 +26,57 @@ Key features
 
 Repository structure (important files)
 -------------------------------------
-- `App.js` — app root and navigation setup (`Stack.Navigator` with `Start` and `Chat`).
+- `App.js` — app root, Firebase initialization, navigation setup (`Stack.Navigator` with `Start` and `Chat`), and network status monitoring.
 - `index.js` — Expo entry point (registers root component).
-- `components/Start.js` — name + color selection screen.
-- `components/Chat.js` — chat screen (messages list, input, media/location controls).
+- `components/Start.js` — name + color selection screen with anonymous Firebase authentication.
+- `components/Chat.js` — chat screen (messages list, input, custom actions, map view for location).
+- `components/CustomActions.js` — custom action sheet component for picking images, taking photos, and sharing location.
+- `babel.config.js` — Babel configuration with react-native-dotenv plugin for environment variables.
+- `.env` — local environment variables (not committed).
 - `assets/` — images and icons used by the app.
 - `package.json` — project dependencies and scripts.
 
+Prerequisites
+-------------
+Before setting up the project, ensure you have:
+- **Node.js 18+** and npm (download from [nodejs.org](https://nodejs.org/))
+- **Expo CLI** (optional but recommended): `npm install -g expo-cli`
+- **Expo Go app** on your mobile device (available on iOS App Store and Google Play)
+- A **Firebase account** (create one at [firebase.google.com](https://firebase.google.com))
+
+For emulator/simulator testing:
+- **iOS:** Xcode (Mac only) or use Expo Go on a physical device
+- **Android:** Android Studio or Android emulator
+
 Technical details & recommended packages
 --------------------------------------
-This project uses Expo and React Native. The following packages are recommended (install as needed):
+This project uses Expo and React Native. The following packages are installed and configured:
 
-- `expo` (managed workflow)
-- `react` / `react-native`
-- `@react-navigation/native` and `@react-navigation/native-stack`
-- `react-native-safe-area-context`
-- `firebase` (Firebase JS SDK)
-- `react-native-gifted-chat` (chat UI)
-- `expo-image-picker` (pick images from library)
-- `expo-camera` (capture photos)
-- `expo-location` (read device location)
-- `@react-native-async-storage/async-storage` (local caching)
-- `@react-native-community/netinfo` (network state detection)
-- `react-native-maps` or use a web map view for location sharing
+**Core dependencies:**
+- `expo` ~54.0.25 (managed workflow)
+- `react` 19.1.0 / `react-native` 0.81.5
+- `@react-navigation/native` ^7.1.21 and `@react-navigation/native-stack` ^7.7.0
+- `react-native-safe-area-context` ~5.6.0
+- `react-native-screens` ~4.16.0
+
+**Firebase & data:**
+- `firebase` ^12.6.0 (Firebase JS SDK for Firestore, Storage, and Authentication)
+- `@react-native-async-storage/async-storage` 2.2.0 (local message caching)
+- `@react-native-community/netinfo` 11.4.1 (network state detection)
+
+**Chat UI:**
+- `react-native-gifted-chat` ^3.2.2 (chat interface)
+- `@expo/react-native-action-sheet` (action sheet for custom actions)
+
+**Media & location:**
+- `expo-image-picker` ^17.0.9 (pick images from library and capture photos with camera)
+- `expo-location` ^19.0.8 (read device location)
+- `react-native-maps` (render map views for shared locations)
+
+**Development tools:**
+- `babel-preset-expo` ^54.0.7
+- `react-native-dotenv` ^3.4.5 (environment variable injection via Babel)
+- `react-native-reanimated` ^4.1.5 (animation library)
 
 Setup & local development
 -------------------------
@@ -58,24 +86,35 @@ Setup & local development
 npm install
 ```
 
-2. Install additional libraries your app uses (example):
+2. Create a `.env` file in the project root with your Firebase configuration:
 
-```powershell
-npm install firebase react-native-gifted-chat @react-native-async-storage/async-storage
-expo install expo-image-picker expo-camera expo-location react-native-safe-area-context @react-native-community/netinfo
+```ini
+FIREBASE_API_KEY=<your-api-key>
+FIREBASE_AUTH_DOMAIN=<your-project>.firebaseapp.com
+FIREBASE_PROJECT_ID=<your-project-id>
+FIREBASE_STORAGE_BUCKET=<your-project>.appspot.com
+FIREBASE_MESSAGING_SENDER_ID=<your-sender-id>
+FIREBASE_APP_ID=<your-app-id>
 ```
 
-3. Configure Firebase (see "Firebase setup" below).
+**Important:** The `.env` file is excluded from version control (`.gitignore`). Never commit Firebase secrets to the repository.
+
+3. Set up Firebase (see "Firebase setup" below).
 
 4. Start the Expo development server:
 
 ```powershell
 npm start
-# or
-npx expo start
 ```
 
-If you need to use a tunnel (`--tunnel`) and the command fails with an ngrok timeout, try `--lan` or check your network/firewall/VPN. See Troubleshooting below.
+This runs `expo start --tunnel`, which allows you to test on physical devices without requiring the same network connection as your dev machine. If `--tunnel` times out, the troubleshooting section below has alternatives.
+
+5. Scan the QR code with the **Expo Go app** (iOS/Android) or use an emulator/simulator:
+   - **Physical device:** Open Expo Go, tap "Scan QR Code", and scan the terminal QR code
+   - **iOS Simulator:** Press `i` in the terminal
+   - **Android Emulator:** Press `a` in the terminal
+
+The app should load in a few seconds. If this is your first time, allow permission prompts for camera, location, and media library access.
 
 Offline persistence & local cache
 --------------------------------
@@ -89,20 +128,53 @@ Implementation notes (current repo):
 
 Media (images) & location handling
 ---------------------------------
-- Use `expo-image-picker` or `expo-camera` to let users pick or capture images.
-- Upload images to Firebase Storage and send the download URL as part of the message object stored in Firestore.
-- Use `expo-location` to obtain coordinates (with user permission), then send either a map link or a small map snapshot. Consider using `react-native-maps` to render an inline map view.
+**Implementation (current repo):**
+- **CustomActions component:** Provides an action sheet (+) button in the chat input field with options to:
+  - Pick an image from the device library (`expo-image-picker`)
+  - Take a photo with the camera (`expo-image-picker`)
+  - Share current location (`expo-location`)
+- **Image uploads:** Images are uploaded to Firebase Storage with unique reference paths (`images/{userID}-{timestamp}-{filename}`). The download URL is sent to the chat via `onSend()`.
+- **Location sharing:** Uses `expo-location` to obtain coordinates (with user permission). Location data is sent as `{longitude, latitude}` and rendered as a MapView in the chat using `react-native-maps`.
+- **Permissions:** The app requests and handles permissions for media library, camera, and location access. Users are alerted if permissions are denied.
+- **Error handling:** All async operations (image upload, location fetch) include try/catch blocks with user-facing error alerts.
+
+Firebase setup
+--------------
+1. Go to [https://console.firebase.google.com](https://console.firebase.google.com) and create a new project
+2. In the Firebase Console, enable these services:
+   - **Firestore Database:** Click "Create Database" → Select "Start in test mode" (for development) → Choose your region
+   - **Cloud Storage:** Click "Get Started" → Select the same region as Firestore
+   - **Authentication:** Go to "Authentication" → Sign-in method → Enable "Anonymous"
+3. Get your Firebase config credentials:
+   - Go to Project Settings (gear icon) → General tab
+   - Scroll down to "Your apps" and create a Web app if needed
+   - Copy the configuration object (API Key, Project ID, Storage Bucket, etc.)
+4. Create a `.env` file in your project root (see "Setup & local development" step 2)
+5. Paste your Firebase credentials into the `.env` file
+
+**Important:** For production, update your Firestore and Storage security rules to restrict access. Test-mode rules allow anyone to read/write—never use this in production.
+
+**Architecture:**
+- Firebase is initialized once at module scope in `App.js` using `initializeApp(firebaseConfig)`
+- Firestore (`db`) and Storage (`storage`) instances are created and passed down through components
+- Chat messages are stored in the `messages` collection with `serverTimestamp()` for consistent ordering
+- Images are uploaded to `images/{userID}-{timestamp}-{filename}` in Firebase Storage
 
 Security notes
 --------------
-- While developing you may use test-mode rules for Firestore; before shipping adjust security rules to ensure only authenticated users may read/write and storage rules protect uploads.
-- Never commit Firebase secrets (API keys in plain git) to a public repo. Use environment variables or a protected configuration mechanism.
-Note: this repository currently contains a Firebase config object in `App.js` for development convenience. Before publishing or sharing the repo publicly, remove or replace hard-coded keys and move sensitive values to environment variables or a secure runtime config.
+- **Environment variables:** Firebase configuration is stored in `.env` (excluded from version control via `.gitignore`).
+- **Firebase rules:** While developing, you may use test-mode rules for Firestore; before shipping, adjust security rules to ensure only authenticated users may read/write. Storage rules should protect uploads and validate file types/sizes.
+- **Authentication:** The app uses Firebase Anonymous Authentication. Consider implementing additional authentication methods (email/password, OAuth) for production.
+- **Best practices:** Never commit API keys or secrets to version control. Use environment variables and secure configuration management.
 
 Accessibility
 -------------
-- Components should include accessibility props (`accessibilityLabel`, `accessibilityRole`, `accessibilityState`) so screen readers can announce UI controls.
-- Use semantic elements, readable font sizes, and sufficient color contrast (the design colours are applied but verify contrast for readability).
+**Implementation (current repo):**
+- All interactive components include accessibility props (`accessibilityLabel`, `accessibilityHint`, `accessibilityRole`) for screen reader compatibility.
+- The CustomActions button is fully accessible with descriptive labels and hints.
+- Input fields include accessibility labels and roles for proper screen reader announcements.
+- Color contrast and font sizes are designed for readability (verify against WCAG guidelines for production).
+- The app is compatible with VoiceOver (iOS) and TalkBack (Android) screen readers.
 
 Styling & design
 ----------------
@@ -116,35 +188,25 @@ Commands
 
 Troubleshooting
 ---------------
-- If `npx expo start --tunnel` fails with "ngrok tunnel took too long to connect", try `--lan` instead (`npx expo start --lan`) or check for VPN/firewall restrictions.
-- If you see unexpected behavior with network banners on startup, ensure your device/emulator and dev machine are on the same network and restart the Expo server.
-- After changing native dependencies or installing new Expo packages, run `npx expo start -c` to clear Metro's cache.
+- **Tunnel timeout:** `npm start` uses `--tunnel` by default (configured in `package.json`). If it times out with "ngrok tunnel took too long to connect", try: `npx expo start --lan` (local network only) or check for VPN/firewall restrictions. For more info, see Expo's [connection guide](https://docs.expo.dev/guides/how-expo-works/#choosing-a-connection-type).
+- **Network banners:** If you see unexpected behavior with network banners on startup, ensure your device/emulator and dev machine are on the same network and restart the Expo server.
+- **Metro cache:** After changing native dependencies, installing new Expo packages, or modifying `babel.config.js`, run `npx expo start -c` to clear Metro's cache.
+- **Environment variables not loading:** Ensure `.env` file exists in the project root and restart the Expo server after creating/modifying it.
+- **Firebase errors:** Verify all Firebase configuration values in `.env` are correct and that Firestore Database, Storage, and Anonymous Authentication are enabled in the Firebase Console.
+- **Permission errors:** Test on a physical device if emulator/simulator permission dialogs don't appear correctly.
 
-Environment (.env.example)
---------------------------
-Create a local `.env` file (do not commit) with your Firebase and other environment-specific values. Example:
+Environment (.env)
+------------------
+**The app uses `react-native-dotenv` for environment variable management.**
 
-```ini
-# Firebase config (example)
-FIREBASE_API_KEY=AIzaSy...yourkey...
-FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-FIREBASE_PROJECT_ID=your-project-id
-FIREBASE_STORAGE_BUCKET=your-project.appspot.com
-FIREBASE_MESSAGING_SENDER_ID=1234567890
-FIREBASE_APP_ID=1:1234567890:web:abcdef123456
+For the `.env` file format and required variables, see "Setup & local development" step 2 above.
 
-# Optional: feature flags or runtime config
-#REACT_NATIVE_APP_ENV=development
-```
+**Configuration:**
+- Environment variables are injected at build time via the `react-native-dotenv` Babel plugin (configured in `babel.config.js`).
+- Variables are imported using `import { VARIABLE_NAME } from '@env'`.
+- The `.env` file is excluded from version control (`.gitignore`).
 
-Notes:
-- Do not commit `.env` or real API keys to source control. Add `.env` to `.gitignore`.
-- Expo's managed workflow does not expose `process.env` by default. Use a suitable approach to provide runtime config, for example:
-	- `expo-constants` + app config, or
-	- a dotenv plugin such as `react-native-dotenv` / Babel plugin, or
-	- use `app.config.js` / `app.json` to inject secrets at build time.
-
-Keep secrets secure and follow best practices for storing production keys.
+**Important:** Do not commit `.env` or real API keys to source control. Keep secrets secure and follow best practices for storing production keys.
 
 Contributing
 ------------
