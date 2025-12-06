@@ -14,6 +14,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 // Provides network status monitoring
 import { useNetInfo }from '@react-native-community/netinfo';
+import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 
 // Firebase SDK for initializing the app and obtaining Firestore
 import { initializeApp } from 'firebase/app';
@@ -56,23 +57,26 @@ const storage = getStorage(app);    // Firebase storage instance
 const App = () => {
     const [netBanner, setNetBanner] = useState(null); // string or null
     const connectionStatus = useNetInfo();  // Hook to monitor network connection status
-    // Initialize prevConnected from the first available network status.
-    const prevConnected = useRef(!!connectionStatus.isConnected);
+    // Track previous connection state to detect real changes
+    const prevConnected = useRef(undefined);
     const bannerTimerRef = useRef(null);
 
-    // On mount, set Firestore network to the initial connection state without showing a banner.
+    // React only to actual connection state changes
     useEffect(() => {
-        if (prevConnected.current) {
-            enableNetwork(db).catch(err => console.log('enableNetwork error', err));
-        } else {
-            disableNetwork(db).catch(err => console.log('disableNetwork error', err));
-        }
-        // We intentionally do not set a banner here.
-    }, []);
+        const isConnected = connectionStatus.isConnected;
+        if (isConnected === undefined || isConnected === null) return; // wait for first real value
 
-    // Watch for real transitions and show a brief banner when they occur.
-    useEffect(() => {
-        const isConnected = !!connectionStatus.isConnected;
+        // First resolved value: sync Firestore, no banner
+        if (prevConnected.current === undefined) {
+            prevConnected.current = isConnected;
+            if (isConnected) {
+                enableNetwork(db).catch(err => console.log('enableNetwork error', err));
+            } else {
+                disableNetwork(db).catch(err => console.log('disableNetwork error', err));
+            }
+            return;
+        }
+
         if (prevConnected.current === isConnected) return; // no change
 
         prevConnected.current = isConnected;
@@ -84,10 +88,9 @@ const App = () => {
             enableNetwork(db).catch(err => console.log('enableNetwork error', err));
         }
 
-        // Auto-hide the banner after 3 seconds. Reset any existing timer.
         if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
         bannerTimerRef.current = setTimeout(() => setNetBanner(null), 10000);
-    }, [connectionStatus.isConnected]);
+    }, [connectionStatus.isConnected, db]);
 
     // Clear banner timer on unmount
     useEffect(() => {
@@ -103,17 +106,19 @@ const App = () => {
                     <Text style={styles.bannerText}>{netBanner}</Text>
                 </View>
             ) : null}
-            <NavigationContainer>
-                <Stack.Navigator initialRouteName='Start'>
-                    <Stack.Screen name='Start' component={Start} />
-                    <Stack.Screen
-                        name='Chat'
-                        options={({ route }) => ({ title: route?.params?.name || 'Me' })}
-                    >
-                        {props => <Chat isConnected={connectionStatus.isConnected} db={db} storage={storage} {...props} />}
-                    </Stack.Screen>
-                </Stack.Navigator>
-            </NavigationContainer>
+            <ActionSheetProvider>
+                <NavigationContainer>
+                    <Stack.Navigator initialRouteName='Start'>
+                        <Stack.Screen name='Start' component={Start} />
+                        <Stack.Screen
+                            name='Chat'
+                            options={({ route }) => ({ title: route?.params?.name || 'Me' })}
+                        >
+                            {props => <Chat isConnected={connectionStatus.isConnected} db={db} storage={storage} {...props} />}
+                        </Stack.Screen>
+                    </Stack.Navigator>
+                </NavigationContainer>
+            </ActionSheetProvider>
         </View>
     );
 };
