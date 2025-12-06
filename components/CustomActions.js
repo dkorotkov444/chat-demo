@@ -11,10 +11,13 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import { useActionSheet } from '@expo/react-native-action-sheet';
 // Firebase storage for uploading images
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
-const CustomActions = ({ userID, onSend, showActionSheetWithOptions, storage, wrapperStyle, iconTextStyle }) => {
+const CustomActions = ({ userID, onSend, storage, wrapperStyle, iconTextStyle }) => {
+    const { showActionSheetWithOptions } = useActionSheet();    // Hook to show action sheet
+
     // Function to pick an image from the library and upload it
     const pickImage = async () => {
         // Request permission to access media library
@@ -26,7 +29,14 @@ const CustomActions = ({ userID, onSend, showActionSheetWithOptions, storage, wr
         let result = await ImagePicker.launchImageLibraryAsync();    // Launch image library to pick an image
         if (!result.canceled) {
             const imageUrl = await uploadImage(result.assets[0].uri);    // Upload selected image to Firebase
-            onSend({ image: imageUrl });    // Send image URL to chat
+            if (imageUrl) {
+                const tempId = `temp-img-${Date.now()}`;
+                onSend([{ 
+                    _id: tempId, 
+                    image: imageUrl, 
+                    user: { _id: userID } 
+                }]);
+            }
         }
     };
 
@@ -41,28 +51,43 @@ const CustomActions = ({ userID, onSend, showActionSheetWithOptions, storage, wr
         let result = await ImagePicker.launchCameraAsync();    // Launch camera to take a photo
         if (!result.canceled) {
             const imageUrl = await uploadImage(result.assets[0].uri);    // Upload photo to Firebase
-            onSend({ image: imageUrl });    // Send photo URL to chat
+            if (imageUrl) {
+                const tempId = `temp-photo-${Date.now()}`;
+                onSend([{ 
+                    _id: tempId, 
+                    image: imageUrl, 
+                    user: { _id: userID } 
+                }]);
+            }
         }
     };
 
     // Function to get the current location and send it
     const getLocation = async () => {
-        // Request permission to access location
-        let permissions = await Location.requestForegroundPermissionsAsync();   
-        if (!permissions?.granted) {
-            Alert.alert('Permission denied', 'Location access is required to share your location.');
-            return;
-        }
-        const location = await Location.getCurrentPositionAsync({});    // Get current location
-        if (location) {
-            onSend({
-                location: {
-                    longitude: location.coords.longitude,
-                    latitude: location.coords.latitude,
-                },
-            });    // Send location coordinates to chat
-        } else {
-            Alert.alert('Error', 'Failed to fetch location. Please try again.');
+        try {
+            // Request permission to access location
+            let permissions = await Location.requestForegroundPermissionsAsync();
+            if (!permissions?.granted) {
+                Alert.alert('Permission denied', 'Location access is required to share your location.');
+                return;
+            }
+            const location = await Location.getCurrentPositionAsync({});
+            if (location) {
+                onSend([{
+                    _id: `temp-${Date.now()}-loc`,
+                    text: 'My location',
+                    location: {
+                        longitude: location.coords.longitude,
+                        latitude: location.coords.latitude,
+                    },
+                    user: { _id: userID }
+                }]);
+            } else {
+                Alert.alert('Error', 'Failed to fetch location. Please try again.');
+            }
+        } catch (error) {
+            Alert.alert('Location Error', 'Could not retrieve your location. Please try again.');
+            console.error('Location error:', error);
         }
     };
 
@@ -79,7 +104,6 @@ const CustomActions = ({ userID, onSend, showActionSheetWithOptions, storage, wr
             const blob = await response.blob();     // Convert image to blob
             const imageRef = ref(storage, generateReference(uri));  // Create storage reference
             await uploadBytes(imageRef, blob);      // Upload blob to Firebase Storage
-            console.log(`File has been uploaded successfully: ${imageRef.fullPath}`);
             const downloadURL = await getDownloadURL(imageRef);     // Get downloadable URL
             return downloadURL;
         } catch (error) {

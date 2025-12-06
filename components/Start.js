@@ -8,7 +8,7 @@
 
 // --- React and other Third-party libraries ---
 import React, { useState } from 'react';
-import { ImageBackground, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View, TouchableOpacity } from 'react-native';
+import { Alert, ImageBackground, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View, TouchableOpacity } from 'react-native';
 // Firebase authentication for anonymous sign-in
 import { getAuth, signInAnonymously } from 'firebase/auth';
 
@@ -35,6 +35,7 @@ const Start = ({ navigation }) => {
             navigation.navigate('Chat', { userID: result.user.uid, name: displayName, color: color });
         })
         .catch((error) => {
+            Alert.alert('Sign-in Error', 'Could not sign in. Please check your internet connection and try again.');
             console.error('Anonymous sign-in failed:', error);
         });
     };
@@ -106,7 +107,6 @@ const Start = ({ navigation }) => {
             </ImageBackground>
         </KeyboardAvoidingView>
 	);
-
 };
 
 // Styles for the Start component

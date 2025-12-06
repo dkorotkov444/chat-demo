@@ -90,7 +90,7 @@ const App = () => {
 
         if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
         bannerTimerRef.current = setTimeout(() => setNetBanner(null), 10000);
-    }, [connectionStatus.isConnected, db]);
+    }, [connectionStatus.isConnected]);
 
     // Clear banner timer on unmount
     useEffect(() => {

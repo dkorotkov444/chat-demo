@@ -131,9 +131,10 @@ const Chat = ({ db, storage, route, isConnected }) => {
       
     // Handle sending new messages. useCallback keeps the handler stable between renders and avoids 
     // creating a new function each render which can trigger unnecessary updates in child components.
-    const onSend = useCallback(async (newMessages = []) => {
+    const onSend = useCallback(async (newMessages) => {
         // Persist message to Firestore.
         try {
+            // Handle both array format (from GiftedChat) and object format (from CustomActions)
             const [message] = newMessages;
             if (!message) return;
             await addDoc(collection(db, 'messages'), { ...message, createdAt: serverTimestamp() });
@@ -201,7 +202,7 @@ const Chat = ({ db, storage, route, isConnected }) => {
    
     // Render custom actions (e.g., image or location upload) if needed
     const renderCustomActions = (props) => {
-        return <CustomActions {...props} userID={userID} storage={storage} />;
+        return <CustomActions {...props} userID={userID} storage={storage} onSend={onSend}/>;
     };
 
     // Render a custom view for messages with location data
@@ -210,10 +211,7 @@ const Chat = ({ db, storage, route, isConnected }) => {
         if (currentMessage.location) {
             return (
                 <MapView
-                    style={{width: 150,
-                    height: 100,
-                    borderRadius: 13,
-                    margin: 3}}
+                    style={styles.mapView}
                     region={{
                     latitude: currentMessage.location.latitude,
                     longitude: currentMessage.location.longitude,
@@ -243,9 +241,9 @@ const Chat = ({ db, storage, route, isConnected }) => {
                     renderBubble={renderBubble}
                     renderSystemMessage={renderSystemMessage}
                     renderInputToolbar={renderInputToolbar}
+                    onSend={onSend}
                     renderActions={renderCustomActions}
                     renderCustomView={renderCustomView}
-                    onSend={onSend}
                     user={user}
                     textInputProps={textInputProps}
                 />
@@ -257,6 +255,12 @@ const Chat = ({ db, storage, route, isConnected }) => {
 const styles = StyleSheet.create({
     containerOuter: { flex: 1 },
     flexGrow: { flex: 1 },
+    mapView: {
+        width: 150,
+        height: 100,
+        borderRadius: 13,
+        margin: 3,
+    },
 });
 
 export default Chat;
