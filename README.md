@@ -53,11 +53,13 @@ Technical details & recommended packages
 This project uses Expo and React Native. The following packages are installed and configured:
 
 **Core dependencies:**
-- `expo` ~54.0.25 (managed workflow)
-- `react` 19.1.0 / `react-native` 0.81.5
+- `expo` ^54.0.27 (managed workflow)
+- `react` ^19.1.0 / `react-native` 0.81.5
 - `@react-navigation/native` ^7.1.21 and `@react-navigation/native-stack` ^7.7.0
 - `react-native-safe-area-context` ~5.6.0
 - `react-native-screens` ~4.16.0
+- `react-native-gesture-handler` ^2.28.0 (navigation gesture support)
+- `react-native-keyboard-controller` ^1.18.5 (keyboard management)
 
 **Firebase & data:**
 - `firebase` ^12.6.0 (Firebase JS SDK for Firestore, Storage, and Authentication)
@@ -73,10 +75,11 @@ This project uses Expo and React Native. The following packages are installed an
 - `expo-location` ^19.0.8 (read device location)
 - `react-native-maps` (render map views for shared locations)
 
-**Development tools:**
+**Development tools & utilities:**
 - `babel-preset-expo` ^54.0.7
 - `react-native-dotenv` ^3.4.5 (environment variable injection via Babel)
-- `react-native-reanimated` ^4.1.5 (animation library)
+- `react-native-reanimated` 4.1.5 (animation library; **requires plugin in babel.config.js**)
+- `react-native-worklets` 0.5.1 (worklet support for animations)
 
 Setup & local development
 -------------------------
@@ -203,7 +206,7 @@ For the `.env` file format and required variables, see "Setup & local developmen
 
 **Configuration:**
 - Environment variables are injected at build time via the `react-native-dotenv` Babel plugin (configured in `babel.config.js`).
-- Variables are imported using `import { VARIABLE_NAME } from '@env'`.
+- Variables are imported in code using `import { VARIABLE_NAME } from '@env'`.
 - The `.env` file is excluded from version control (`.gitignore`).
 
 **Important:** Do not commit `.env` or real API keys to source control. Keep secrets secure and follow best practices for storing production keys.
